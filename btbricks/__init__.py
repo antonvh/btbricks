@@ -30,6 +30,8 @@ from .bt import (
 )
 from .bthub import BtHub
 from .ctrl_plus import SmartHub
+from ._uart_manager import UARTConnectionManager
+from ._lego_manager import LEGOConnectionManager
 
 __all__ = [
     "BLEHandler",
@@ -49,4 +51,6 @@ __all__ = [
     "SETTING2",
     "BtHub",
     "SmartHub",
+    "UARTConnectionManager",
+    "LEGOConnectionManager",
 ]

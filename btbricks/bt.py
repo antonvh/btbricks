@@ -10,22 +10,31 @@
 
 ## TODO
 ## Fix occasional packet loss on very large notify payloads:
-    # Maybe notify size or delay
+# Maybe notify size or delay
 
 ## Clean up Ble_handler: Move connection code to LEGO and UART classes.
 
 ## Fix mem allocation and scheduling in IRQ's:
-    # Note: If schedule() is called from a preempting IRQ,
-    # when memory allocation is not allowed and the callback
-    # to be passed to schedule() is a bound method, passing this
-    # directly will fail. This is because creating a reference to a
-    # bound method causes memory allocation. A solution is to
-    # create a reference to the method in the class constructor
-    # and to pass that reference to schedule().
-    # This is discussed in detail here reference documentation under 
-    # “Creation of Python objects”.
+# Note: If schedule() is called from a preempting IRQ,
+# when memory allocation is not allowed and the callback
+# to be passed to schedule() is a bound method, passing this
+# directly will fail. This is because creating a reference to a
+# bound method causes memory allocation. A solution is to
+# create a reference to the method in the class constructor
+# and to pass that reference to schedule().
+# This is discussed in detail here reference documentation under
+# “Creation of Python objects”.
 
 import struct
+
+from ._discovery_manager import DiscoveryManager
+from ._callback_registry import CallbackRegistry
+from ._connection_context import (
+    ConnectionContext,
+    CONNECTING_UART,
+    CONNECTING_LEGO,
+    CONNECTING_NONE,
+)
 
 try:
     from utime import sleep_ms, ticks_diff, ticks_ms
@@ -308,26 +317,28 @@ class BLEHandler:
         self._ble.irq(self._irq)
         self.debug = debug
         self.log_size = 200
+
+        # Initialize new component managers
+        self._discovery = DiscoveryManager()
+        self._callbacks = CallbackRegistry()
+        self._connection = ConnectionContext()
+
+        # Lazy-loaded connection managers (Phase 2)
+        self._uart_manager = None
+        self._lego_manager = None
+
         self._reset()
 
     def _reset(self):
         self._connected_central = -1  # Only one central can connect. -1 is not connected.
-        self._scan_result_callback = None
-        self._scan_done_callback = None
-        self._write_done_callbacks = {}
-        self._disconn_callbacks = {}
-        self._central_conn_callback = None  # Used when centrals connect
-        self._central_disconn_callback = None  # Used when centrals disconnect
-        self._char_result_callback = None
-        self._write_callbacks = {}
-        self._notify_callbacks = {}
-        self._search_name = None
-        self.connecting_uart = False
-        self.connecting_lego = False
         self._read_data = {}
-        self._start_handle = None
-        self._end_handle = None
         self.mtu = 20
+
+        # Reset component managers
+        self._discovery.stop_discovery()
+        self._callbacks.clear_all()
+        self._connection.reset()
+
         if self.debug:
             # Reserve log_size bytes and track the index of the last written byte.
             self.log_data = bytearray(self.log_size)
@@ -375,160 +386,190 @@ class BLEHandler:
 
     def _irq(self, event, data):
         if event == _IRQ_SCAN_RESULT:
-            addr_type, addr, adv_type, rssi, adv_data = data
-            name = _decode_name(adv_data) or "?"
-            services = _decode_services(adv_data)
-            # self.info(self._search_payload == adv_data) # This works TODO: Implement properly
-            self.info("Found: ", name, " with services: ", services)
-            if self.connecting_uart:
-                if name == self._search_name and _UART_UUID in services:
-                    # Found a potential device, remember it
-                    self._addr_type = addr_type
-                    self._addr = bytes(
-                        addr
-                    )  # Note: addr buffer is owned by caller so need to copy it.
-                    # ... and stop scanning. This triggers the IRQ_SCAN_DONE and the on_scan callback.
-                    self.stop_scan()
-            if self.connecting_lego:
-                if _LEGO_SERVICE_UUID in services:
-                    self._addr_type = addr_type
-                    self._addr = bytes(addr)
-                    self._adv_type = adv_type
-                    self._name = _decode_name(adv_data)
-                    self._services = _decode_services(adv_data)
-                    self.stop_scan()
-            if self._scan_result_callback:
-                self._scan_result_callback(addr_type, addr, name, services)
-
+            self._handle_scan_result(data)
         elif event == _IRQ_SCAN_DONE:
-            if self.connecting_uart:
-                if self._addr_type is not None:
-                    print("Found peripheral:", self._search_name)
-                    sleep_ms(500)
-                    self._ble.gap_connect(self._addr_type, self._addr)
-                else:
-                    self.connecting_uart = False
-                    self.info("No uart peripheral '{}' found.".format(self._search_name))
-            elif self.connecting_lego:
-                if self._addr_type is not None:
-                    print("Found SMART Hub:", self._name)
-                    sleep_ms(500)
-                    self._ble.gap_connect(self._addr_type, self._addr)
-                else:
-                    self.connecting_lego = False
-                    self.info("LEGO Smart hub found.")
-            if self._scan_done_callback:
-                self._scan_done_callback(data)
-
+            self._handle_scan_done(data)
         elif event == _IRQ_PERIPHERAL_CONNECT:
-            # Connect to peripheral successful.
-            conn_handle, addr_type, addr = data
-            if self.connecting_uart or self.connecting_lego:
-                self._conn_handle = conn_handle
-            self._ble.gattc_discover_services(conn_handle)
-
+            self._handle_peripheral_connect(data)
         elif event == _IRQ_PERIPHERAL_DISCONNECT:
-            # Disconnect (either initiated by us or the remote end).
-            conn_handle, _, _ = data
-            if conn_handle in self._disconn_callbacks:
-                if self._disconn_callbacks[conn_handle]:
-                    self._disconn_callbacks[conn_handle]()
-                    # TODO Also delete any notify callbacks
-
+            self._handle_peripheral_disconnect(data)
         elif event == _IRQ_GATTC_SERVICE_RESULT:
-            # Connected device returned a service.
-            conn_handle, start_handle, end_handle, uuid = data
-            if uuid == _UART_UUID or uuid == _LEGO_SERVICE_UUID:
-                # Save handles until SERVICE_DONE
-                self._start_handle = start_handle
-                self._end_handle = end_handle
-
+            self._handle_gattc_service_result(data)
         elif event == _IRQ_GATTC_SERVICE_DONE:
-            # Service query complete.
-            if self._start_handle and self._end_handle:
-                self._ble.gattc_discover_characteristics(
-                    self._conn_handle, self._start_handle, self._end_handle
-                )
-            else:
-                self.info("Failed to find requested gatt service.")
-
+            self._handle_gattc_service_done(data)
         elif event == _IRQ_MTU_EXCHANGED:
-            # A remote central negotiated a new mtu
-            # Store it to control large transfers
-            # TODO: find out if mtu is conn_handle dependent...
-            # Let's assume it isn't.
-            conn_handle, mtu = data
-            self.mtu = mtu
-            self.info("Mtu:", mtu)
-
+            self._handle_mtu_exchanged(data)
         elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
-            # Connected device returned a characteristic.
-            conn_handle, def_handle, value_handle, properties, uuid = data
-            if self.connecting_uart:
-                if uuid == _UART_RX_UUID:
-                    self._rx_handle = value_handle
-                elif uuid == _UART_TX_UUID:
-                    self._tx_handle = value_handle
-                if all((self._conn_handle, self._rx_handle, self._tx_handle)):
-                    self.connecting_uart = False
-            elif self.connecting_lego:
-                if uuid == _LEGO_SERVICE_CHAR:
-                    self._lego_value_handle = value_handle
-                    self.connecting_lego = False  # We're done
-            if self._char_result_callback:
-                self._char_result_callback(conn_handle, value_handle, uuid)
-
+            self._handle_gattc_characteristic_result(data)
         elif event == _IRQ_GATTC_WRITE_DONE:
-            # This event fires in a central, when it is done writing
-            # to a remote peripheral.
-            # Call the callback on the value handle that has finished if there is one.
-            # The callback function should check for the value handle.
-            conn_handle, value_handle, status = data
-            self.info("Write done on", conn_handle, "in value", value_handle)
-            if conn_handle in self._write_done_callbacks:
-                self._write_done_callbacks[conn_handle](value_handle, status)
-
+            self._handle_gattc_write_done(data)
         elif event == _IRQ_GATTC_NOTIFY:
-            conn_handle, value_handle, notify_data = data
-            notify_data = bytes(notify_data)
-            self.info("Notify:", conn_handle, value_handle, notify_data)
-            if conn_handle in self._notify_callbacks:
-                if self._notify_callbacks[conn_handle]:
-                    schedule(self._notify_callbacks[conn_handle], notify_data)
-
+            self._handle_gattc_notify(data)
         elif event == _IRQ_GATTC_READ_RESULT:
-            # A read completed successfully and returns data
-            conn_handle, value_handle, char_data = data
-            char_data = bytes(char_data)
-            self.info("Read:", conn_handle, value_handle, char_data)
-            self._read_data[(value_handle << 12) + conn_handle] = char_data
-
+            self._handle_gattc_read_result(data)
         elif event == _IRQ_CENTRAL_CONNECT:
-            conn_handle, addr_type, addr = data
-            self.info("New connection ", conn_handle)
-            self._connected_central = conn_handle
-            if self._central_conn_callback:
-                self._central_conn_callback(*data)
-
+            self._handle_central_connect(data)
         elif event == _IRQ_CENTRAL_DISCONNECT:
-            conn_handle, addr_type, addr = data
-            self.info("Disconnected ", conn_handle)
-            self._connected_central = -1
-            if self._central_disconn_callback:
-                self._central_disconn_callback(conn_handle)
-
+            self._handle_central_disconnect(data)
         elif event == _IRQ_GATTS_WRITE:
-            # A client/central has written to a characteristic or descriptor.
-            # Get the value and trigger the callback.
-            conn_handle, value_handle = data
-            value = self._ble.gatts_read(value_handle)
-            self.info("Client/central wrote:", conn_handle, value)
-            if value_handle in self._write_callbacks:
-                if self._write_callbacks[value_handle]:
-                    self._write_callbacks[value_handle](value)
-
+            self._handle_gatts_write(data)
         else:
             self.info("Unhandled event: ", hex(event), "data:", data)
+
+    def _handle_scan_result(self, data):
+        """Handle _IRQ_SCAN_RESULT event."""
+        addr_type, addr, adv_type, rssi, adv_data = data
+        name = _decode_name(adv_data) or "?"
+        services = _decode_services(adv_data)
+        self.info("Found: ", name, " with services: ", services)
+
+        # Check if device matches what we're searching for
+        matched = self._discovery.on_scan_result(
+            addr_type, addr, name, services, _UART_UUID, _LEGO_SERVICE_UUID
+        )
+        if matched:
+            self.stop_scan()
+
+    def _handle_scan_done(self, data):
+        """Handle _IRQ_SCAN_DONE event."""
+        found, info = self._discovery.on_scan_done()
+
+        if self._discovery.mode == CONNECTING_UART:
+            if found:
+                print("Found peripheral:", info)
+                sleep_ms(500)
+                addr_type, addr = self._discovery.get_discovered_address()
+                self._ble.gap_connect(addr_type, addr)
+            else:
+                self.info("No uart peripheral '{}' found.".format(self._discovery._search_name))
+        elif self._discovery.mode == CONNECTING_LEGO:
+            if found:
+                print("Found SMART Hub:", info)
+                sleep_ms(500)
+                addr_type, addr = self._discovery.get_discovered_address()
+                self._ble.gap_connect(addr_type, addr)
+            else:
+                self.info("LEGO Smart hub not found.")
+
+        # Call user's scan done callback if provided
+        callback = self._callbacks.get_scan_done_callback()
+        if callback:
+            callback(data)
+
+    def _handle_peripheral_connect(self, data):
+        """Handle _IRQ_PERIPHERAL_CONNECT event."""
+        conn_handle, addr_type, addr = data
+        self._connection.set_connection_info(conn_handle, addr_type, addr)
+        self._ble.gattc_discover_services(conn_handle)
+
+    def _handle_peripheral_disconnect(self, data):
+        """Handle _IRQ_PERIPHERAL_DISCONNECT event."""
+        conn_handle, _, _ = data
+        callback = self._callbacks.get_disconnect_callback(conn_handle)
+        if callback:
+            callback()
+        # Clean up callbacks for this connection
+        self._callbacks.clear_connection(conn_handle)
+        self._connection.clear_connection()
+
+    def _handle_gattc_service_result(self, data):
+        """Handle _IRQ_GATTC_SERVICE_RESULT event."""
+        conn_handle, start_handle, end_handle, uuid = data
+        if uuid == _UART_UUID or uuid == _LEGO_SERVICE_UUID:
+            # Save handles until SERVICE_DONE
+            self._connection.set_discovery_handles(start_handle, end_handle)
+
+    def _handle_gattc_service_done(self, data):
+        """Handle _IRQ_GATTC_SERVICE_DONE event."""
+        if self._connection.has_discovery_handles():
+            self._ble.gattc_discover_characteristics(
+                self._connection.conn_handle,
+                self._connection.start_handle,
+                self._connection.end_handle,
+            )
+        else:
+            self.info("Failed to find requested gatt service.")
+
+    def _handle_mtu_exchanged(self, data):
+        """Handle _IRQ_MTU_EXCHANGED event."""
+        conn_handle, mtu = data
+        self.mtu = mtu
+        self.info("Mtu:", mtu)
+
+    def _handle_gattc_characteristic_result(self, data):
+        """Handle _IRQ_GATTC_CHARACTERISTIC_RESULT event."""
+        conn_handle, def_handle, value_handle, properties, uuid = data
+
+        if self._discovery.mode == CONNECTING_UART:
+            if uuid == _UART_RX_UUID:
+                self._connection.uart_rx_handle = value_handle
+            elif uuid == _UART_TX_UUID:
+                self._connection.uart_tx_handle = value_handle
+            if self._connection.is_uart_ready():
+                from ._connection_context import CONNECTING_NONE
+
+                self._discovery.mode = CONNECTING_NONE
+        elif self._discovery.mode == CONNECTING_LEGO:
+            if uuid == _LEGO_SERVICE_CHAR:
+                self._connection.set_lego_handle(value_handle)
+                from ._connection_context import CONNECTING_NONE
+
+                self._discovery.mode = CONNECTING_NONE  # We're done
+
+        callback = self._callbacks.get_char_result_callback()
+        if callback:
+            callback(conn_handle, value_handle, uuid)
+
+    def _handle_gattc_write_done(self, data):
+        """Handle _IRQ_GATTC_WRITE_DONE event."""
+        conn_handle, value_handle, status = data
+        self.info("Write done on", conn_handle, "in value", value_handle)
+        callback = self._callbacks.get_write_done_callback(conn_handle)
+        if callback:
+            callback(value_handle, status)
+
+    def _handle_gattc_notify(self, data):
+        """Handle _IRQ_GATTC_NOTIFY event."""
+        conn_handle, value_handle, notify_data = data
+        notify_data = bytes(notify_data)
+        self.info("Notify:", conn_handle, value_handle, notify_data)
+        callback = self._callbacks.get_notify_callback(conn_handle)
+        if callback:
+            schedule(callback, notify_data)
+
+    def _handle_gattc_read_result(self, data):
+        """Handle _IRQ_GATTC_READ_RESULT event."""
+        conn_handle, value_handle, char_data = data
+        char_data = bytes(char_data)
+        self.info("Read:", conn_handle, value_handle, char_data)
+        self._read_data[(value_handle << 12) + conn_handle] = char_data
+
+    def _handle_central_connect(self, data):
+        """Handle _IRQ_CENTRAL_CONNECT event."""
+        conn_handle, addr_type, addr = data
+        self.info("New connection ", conn_handle)
+        self._connected_central = conn_handle
+        callback = self._callbacks.get_central_conn_callback()
+        if callback:
+            callback(*data)
+
+    def _handle_central_disconnect(self, data):
+        """Handle _IRQ_CENTRAL_DISCONNECT event."""
+        conn_handle, addr_type, addr = data
+        self.info("Disconnected ", conn_handle)
+        self._connected_central = -1
+        callback = self._callbacks.get_central_disconn_callback()
+        if callback:
+            callback(conn_handle)
+
+    def _handle_gatts_write(self, data):
+        """Handle _IRQ_GATTS_WRITE event."""
+        conn_handle, value_handle = data
+        value = self._ble.gatts_read(value_handle)
+        self.info("Client/central wrote:", conn_handle, value)
+        callback = self._callbacks.get_write_callback(value_handle)
+        if callback:
+            callback(value)
 
     def advertise(self, payload, interval_us=100000):
         """
@@ -548,7 +589,7 @@ class BLEHandler:
         :param callback: The callback function to call when a client writes to the characteristic or descriptor.
         :type callback: function
         """
-        self._write_callbacks[value_handle] = callback
+        self._callbacks.on_write(value_handle, callback)
 
     def on_write_done(self, conn_handle, callback):
         """
@@ -560,7 +601,7 @@ class BLEHandler:
         :param callback: The callback function to call when a client writes to the characteristic or descriptor.
         :type callback: function
         """
-        self._write_done_callbacks[conn_handle] = callback
+        self._callbacks.on_write_done(conn_handle, callback)
 
     def notify(self, data, val_handle, conn_handle=None):
         """
@@ -609,58 +650,54 @@ class BLEHandler:
         :param on_write_done: Callback function to call when the peripheral is done writing to the central
         :type on_write_done: function
         """
-        # TODO: Create a generic connecting function that encodes the searched-for advertising data
-        # self._search_payload = _advertising_payload(name=name, services=[_UART_UUID])
-        # and searches for a match.
-        # Then make connect_uart and connect_lego call that DRYer function.
-
-        self._search_name = name
-        self.connecting_uart = True
-        self._conn_handle = None
-        self._start_handle = None
-        self._end_handle = None
-        self._rx_handle = None
-        self._tx_handle = None
-        self._addr_type = None
-        self._addr = None
+        # Start UART discovery
+        self._discovery.start_uart_discovery(name)
+        self._connection.reset()
 
         self.scan()
         for i in range(time_out):
-
             if self.debug:
                 self.print_log()
             else:
                 print("Connecting to UART Peripheral:", name)
             sleep_ms(1000)
-            if not self.connecting_uart:
+            from ._connection_context import CONNECTING_NONE
+
+            if self._discovery.mode == CONNECTING_NONE:
                 break
-        if self._rx_handle:
-            self._notify_callbacks[self._conn_handle] = on_notify
-            self._disconn_callbacks[self._conn_handle] = on_disconnect
-            self._write_done_callbacks[self._conn_handle] = on_write_done
+
+        # Register callbacks if connection was successful
+        if self._connection.is_uart_ready():
+            if on_notify:
+                self._callbacks.on_notify(self._connection.conn_handle, on_notify)
+            if on_disconnect:
+                self._callbacks.on_disconnect(self._connection.conn_handle, on_disconnect)
+            if on_write_done:
+                self._callbacks.on_write_done(self._connection.conn_handle, on_write_done)
 
             # Increase packet size
             self._ble.config(mtu=TARGET_MTU)
-            self._ble.gattc_exchange_mtu(self._conn_handle)
+            self._ble.gattc_exchange_mtu(self._connection.conn_handle)
             sleep_ms(60)
             # Store the result of the mtu negotiation.
             self.mtu = self._ble.config("mtu") - 4  # Some overhead bytes in max msg size.
 
-        self.connecting_uart = False
-        return self._conn_handle, self._rx_handle, self._tx_handle
+        self._discovery.stop_discovery()
+        return (
+            self._connection.conn_handle,
+            self._connection.uart_rx_handle,
+            self._connection.uart_tx_handle,
+        )
 
     def connect_lego(self, time_out=10):
         """
         Connect to a LEGO Smart Hub that advertises with a LEGO service.
         LEGO Hubs are advertising when their leds are blinking, just after turning them on.
         """
-        self.connecting_lego = True
-        self._conn_handle = None
-        self._start_handle = None
-        self._end_handle = None
-        self._lego_value_handle = None
-        self._addr_type = None
-        self._addr = None
+        # Start LEGO discovery
+        self._discovery.start_lego_discovery()
+        self._connection.reset()
+
         self.scan()
         for i in range(time_out):
             if self.debug:
@@ -668,10 +705,46 @@ class BLEHandler:
             else:
                 print("Connecting to a LEGO Smart Hub...")
             sleep_ms(1000)
-            if not self.connecting_lego:
+            from ._connection_context import CONNECTING_NONE
+
+            if self._discovery.mode == CONNECTING_NONE:
                 break
-        self.connecting_lego = False
-        return self._conn_handle
+
+        self._discovery.stop_discovery()
+        return self._connection.conn_handle
+
+    def connect_uart_v2(
+        self,
+        name="robot",
+        on_disconnect=None,
+        on_notify=None,
+        on_write_done=None,
+        time_out=10,
+        debug=False,
+    ):
+        """
+        New Phase-2 API: connect using the `UARTConnectionManager`.
+
+        Backward-compatible wrapper that delegates to `self.uart_manager.connect`.
+        Returns the same tuple `(conn_handle, rx_handle, tx_handle)` on success.
+        """
+        return self.uart_manager.connect(
+            name=name,
+            on_disconnect=on_disconnect,
+            on_notify=on_notify,
+            on_write_done=on_write_done,
+            timeout=time_out,
+            debug=debug,
+        )
+
+    def connect_lego_v2(self, time_out=10, debug=False):
+        """
+        New Phase-2 API: connect to LEGO hub using `LEGOConnectionManager`.
+
+        Backward-compatible wrapper that delegates to `self.lego_manager.connect`.
+        Returns the connection handle or `None` on failure.
+        """
+        return self.lego_manager.connect(timeout=time_out, debug=debug)
 
     def uart_write(self, value, conn_handle, rx_handle=12, response=False):
         self._ble.gattc_write(conn_handle, rx_handle, value, 1 if response else 0)
@@ -679,15 +752,17 @@ class BLEHandler:
 
     def lego_write(self, value, conn_handle=None, response=False):
         if not conn_handle:
-            conn_handle = self._conn_handle
-        if self._lego_value_handle and conn_handle is not None:
-            self._ble.gattc_write(conn_handle, self._lego_value_handle, value, 1 if response else 0)
+            conn_handle = self._connection.conn_handle
+        if self._connection.lego_value_handle and conn_handle is not None:
+            self._ble.gattc_write(
+                conn_handle, self._connection.lego_value_handle, value, 1 if response else 0
+            )
             self.info("GATTC Written ", value)
 
     def enable_notify(self, conn_handle, desc_handle, callback=None):
         self._ble.gattc_write(conn_handle, desc_handle, struct.pack("<h", _NOTIFY_ENABLE), 0)
         if callback:
-            self._notify_callbacks[conn_handle] = callback
+            self._callbacks.on_notify(conn_handle, callback)
 
 
 class MidiController:

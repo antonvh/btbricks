@@ -158,6 +158,46 @@ pyproject.toml            # Modern Python project config
 - **`MidiController`**: Send MIDI commands over BLE
 - **`BtHub`**: High-level hub communication interface
 
+## Phase 2 — New Manager-based API (v0.2)
+
+Phase 2 introduces protocol-specific connection managers that simplify connection logic and are safe to use in-place. These are non-breaking additions: the original API remains available while new helpers are provided.
+
+- `BLEHandler.uart_manager` — instance of `UARTConnectionManager` (lazy-created)
+- `BLEHandler.lego_manager` — instance of `LEGOConnectionManager` (lazy-created)
+- `BLEHandler.connect_uart_v2(...)` — convenience wrapper delegating to `uart_manager.connect`
+- `BLEHandler.connect_lego_v2(...)` — convenience wrapper delegating to `lego_manager.connect`
+
+Usage examples:
+
+```python
+from btbricks import BLEHandler
+
+ble = BLEHandler()
+# Option A: use convenience wrapper (non-breaking)
+conn, rx, tx = ble.connect_uart_v2("robot", on_notify=cb, on_disconnect=on_disc)
+
+# Option B: use manager directly for more control
+conn, rx, tx = ble.uart_manager.connect("robot")
+ble.uart_manager.on_notify(conn, cb)
+
+# LEGO hub
+hub_conn = ble.connect_lego_v2()
+# or
+hub_conn = ble.lego_manager.connect()
+ble.lego_manager.on_notify(hub_conn, hub_cb)
+```
+
+Migration and deprecation notes:
+
+- Phase 2 is intentionally non-breaking. `connect_uart` and `connect_lego` remain supported.
+- In Phase 3 (v1.0) we will promote the managers as the primary API and provide a migration guide.
+
+Developer tasks when extending or fixing connection logic:
+
+- Prefer adding behavior to `UARTConnectionManager` / `LEGOConnectionManager` rather than modifying `BLEHandler`.
+- Keep `CallbackRegistry` as the central place for registering and cleaning callbacks.
+- Add unit tests for new manager behavior in `tests/` using the MicroPython polyfills already present.
+
 ## Release Checklist
 
 1. Update version in `setup.py`, `pyproject.toml`, and `btbricks/__init__.py`
