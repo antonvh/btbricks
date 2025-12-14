@@ -1,0 +1,214 @@
+# Development Guide
+
+## Overview
+
+btbricks is a MicroPython Bluetooth library for controlling LEGO hubs and creating custom BLE peripherals. Development involves both regular Python (for documentation, testing stubs, and package distribution) and MicroPython (for actual deployment).
+
+## Setting Up Development Environment
+
+### Prerequisites
+
+- Python 3.7 or higher (for development tools, docs, and testing)
+- MicroPython board (ESP32, LEGO SPIKE, etc.) for actual testing
+- Git
+- Virtual environment (venv)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/btbricks.git
+cd btbricks
+```
+
+2. Create and activate virtual environment:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+3. Install development dependencies:
+```bash
+pip install -e ".[dev]"
+```
+
+## Building Documentation
+
+We use Sphinx with autodoc to generate API documentation from docstrings.
+
+### Build HTML docs:
+```bash
+cd docs
+make html
+```
+
+Documentation will be in `docs/_build/html/`. Open `index.html` in a browser.
+
+### Clean build:
+```bash
+make clean
+make html
+```
+
+### View documentation locally:
+```bash
+open _build/html/index.html  # macOS
+# or use your preferred browser
+```
+
+## Code Quality
+
+### Format code with black:
+```bash
+black btbricks tests
+```
+
+### Lint with flake8:
+```bash
+flake8 btbricks tests
+```
+
+### Type check with mypy:
+```bash
+mypy btbricks
+```
+
+## Testing
+
+### Notes on Testing
+
+Since btbricks is MicroPython-only, traditional unit tests are limited. Full testing requires:
+- Running code directly on MicroPython device
+- Testing with actual LEGO hubs or mock BLE devices
+
+### Test stubs (if present):
+```bash
+pytest tests/
+```
+
+## Deploying to MicroPython Devices
+
+### Using micropip (MicroPython package manager):
+On the MicroPython device:
+```python
+import micropip
+await micropip.install("btbricks")
+```
+
+### Using mpremote (for ESP32, SPIKE):
+```bash
+mpremote cp -r btbricks :btbricks
+```
+
+### Manual upload via WebREPL or Thonny:
+1. Copy `btbricks/` folder to device's filesystem
+2. Ensure the module is in the Python path
+
+### Verify installation:
+On the device REPL:
+```python
+import btbricks
+print(btbricks.__version__)
+```
+
+## Building and Publishing Package
+
+### Build distribution files:
+```bash
+pip install build twine
+python -m build
+```
+
+### Test PyPI upload (optional):
+```bash
+twine upload --repository testpypi dist/*
+```
+
+### Upload to PyPI:
+```bash
+twine upload dist/*
+```
+
+## Project Structure
+
+```
+btbricks/
+├── __init__.py           # Package exports and version
+├── bt.py                 # Core BLE handler and communication classes
+├── bthub.py              # High-level LEGO hub interface
+├── ctrl_plus.py          # CTRL+ protocol support
+docs/
+├── conf.py               # Sphinx configuration
+├── index.rst             # Documentation home page
+├── api.rst               # API reference (auto-generated from docstrings)
+├── _build/               # Generated HTML documentation
+tests/
+examples/
+setup.py                  # Package setup (for PyPI/micropip)
+pyproject.toml            # Modern Python project config
+```
+
+## Key Classes
+
+- **`BLEHandler`**: Low-level Bluetooth communication
+- **`UARTCentral`**: Nordic UART client mode
+- **`UARTPeripheral`**: Nordic UART server mode
+- **`RCReceiver`**: Receive RC control signals
+- **`RCTransmitter`**: Send RC control signals
+- **`MidiController`**: Send MIDI commands over BLE
+- **`BtHub`**: High-level hub communication interface
+
+## Release Checklist
+
+1. Update version in `setup.py`, `pyproject.toml`, and `btbricks/__init__.py`
+2. Update `CHANGELOG.md` with changes
+3. Build documentation: `cd docs && make html`
+4. Build package: `python -m build`
+5. Test upload: `twine upload --repository testpypi dist/*`
+6. Upload to PyPI: `twine upload dist/*`
+7. Commit changes: `git commit -m "Release vX.Y.Z"`
+8. Tag release: `git tag vX.Y.Z && git push origin vX.Y.Z`
+
+## Useful Resources
+
+- [MicroPython Documentation](https://docs.micropython.org/)
+- [Anton's Mindstorms Docs](https://docs.antonsmindstorms.com/) - LEGO Bluetooth protocol details
+- [LEGO Bluetooth Specifications](https://lego.github.io/lego-ble-wireless-protocol-docs/)
+
+4. Create tag: `git tag vX.Y.Z`
+5. Push to GitHub: `git push origin main && git push origin vX.Y.Z`
+6. GitHub Actions will automatically build and publish to PyPI
+
+## Project Structure
+
+```
+btbricks/
+├── btbricks/           # Main package
+│   ├── __init__.py     # Package exports
+│   ├── hub.py          # Hub class
+│   ├── scanner.py      # HubScanner class
+│   ├── protocol.py     # Protocol definitions
+│   └── exceptions.py   # Custom exceptions
+├── tests/              # Test suite
+├── examples/           # Example scripts
+├── docs/               # Documentation
+├── setup.py            # Package configuration
+├── pyproject.toml      # Modern package config
+├── README.md           # Project README
+└── LICENSE             # MIT License
+```
+
+## Contributing
+
+1. Create a new branch: `git checkout -b feature/my-feature`
+2. Make your changes
+3. Run tests and linting: `pytest && black . && flake8 . && mypy btbricks`
+4. Commit: `git commit -am 'Add my feature'`
+5. Push: `git push origin feature/my-feature`
+6. Create Pull Request
+
+## Issues and Support
+
+- Report bugs on [GitHub Issues](https://github.com/yourusername/btbricks/issues)
+- Check [Documentation](docs/) for usage help
+- Review [Examples](examples/) for code samples
