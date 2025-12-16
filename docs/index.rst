@@ -1,16 +1,9 @@
-Welcome to btbricks's documentation!
-===================================
+btbricks documentation
+========================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+.. automodule:: btbricks
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-   api
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

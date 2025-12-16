@@ -40,6 +40,37 @@ def clamp_int(n, floor=-100, ceiling=100):
     return max(min(round(n), ceiling), floor)
 
 class BtHub():
+    """
+    BtHub
+
+    A class for connecting to and controlling LEGO Hub devices via Bluetooth Low Energy (BLE).
+
+    This class provides an interface to communicate with LEGO Smart Hubs running standard LEGO firmware.
+    It handles BLE connection management, motor control, sensor data subscription, and LED control.
+
+    :param ble_handler: Optional BLEHandler instance for managing BLE connections. If None, a new BLEHandler will be created.
+    :type ble_handler: BLEHandler, optional
+
+    :raises ConnectionError: If the BLE connection to the hub fails.
+
+    Example::
+
+        hub = BtHub()
+        hub.connect()
+        hub.dc(1, 50)  # Run motor on port 1 at 50%
+        acceleration = hub.acc()  # Get accelerometer data
+        hub.disconnect()
+
+    Attributes:
+        ble_handler (BLEHandler): Handler for BLE communication operations
+        _conn_handle: Internal connection handle for the active BLE connection
+        acc_sub (bool): Flag indicating if accelerometer subscription is active
+        gyro_sub (bool): Flag indicating if gyroscope subscription is active
+        tilt_sub (bool): Flag indicating if tilt subscription is active
+        hub_data (dict): Dictionary storing sensor data by port
+        mode_info (dict): Dictionary storing mode information by port
+    """
+    
     __PORTS = {
         1:0, 2:1, 3:2, 4:3,
         "A":0, "B":1, "C":2, "D":3}
