@@ -14,9 +14,23 @@ A MicroPython Bluetooth library for controlling LEGO hubs and creating custom Bl
 
 ## Installation
 
-```bash
-pip install btbricks
+### On LMS-ESP32
+
+The module should be included in the latest Micropython firmware from <https://wwww.antonsmindstorms.com>. If not, use ViperIDE or Thonny and create a new file called rcservo.py. 
+Copy the contents from the same file in this repository inside.
+
+### On MicroPython device using `micropip` from PyPI
+
+```python
+import micropip
+await micropip.install("btbricks")
 ```
+
+Note: `micropip` must be available on the target board and may require an internet connection from the device.
+
+### On SPIKE Legacy or MINDSTORMS Robot Inventor
+
+Use the installer script in mpy-robot-tools: <https://github.com/antonvh/mpy-robot-tools/blob/master/Installer/install_mpy_robot_tools.py>
 
 ## Quick Start
 
@@ -47,67 +61,83 @@ if hub.is_connected():
 ```
 
 ### Create an RC Receiver (Hub-side)
-RCReceiver, R_STICK_HOR, R_STICK_VER
+Use the examples in the `examples/` folder for full, runnable code. Minimal receiver/transmitter snippets:
 
-# Create RC receiver
-receiver = RCReceiver(name="robot")
+```python
+from btbricks import RCReceiver, R_STICK_HOR, R_STICK_VER
+from time import sleep_ms
 
-# Wait for transmitter connection
-while not receiver.is_connected():
-    pass
+# Create RC receiver (advertises as "robot" by default)
+rcv = RCReceiver(name="robot")
 
-print("Transmitter connected!")
-
-# Read control values in a loop
-while receiver.is_connected():
-    steering = receiver.get_value(R_STICK_HOR)
-    throttle = receiver.get_value(R_STICK_VER)
-    print(f"Steering: {steering}, Throttle: {throttle}"
-receiver.on_data = on_rc_data
-receiver.start()
-```RCTransmitter, R_STICK_HOR, R_STICK_VER
-from time import sleep
-
-# Create transmitter
-tx = RCTransmitter()
-
-# Connect to receiver
-if tx.connect(name="robot"):
-    while tx.is_connected():
-        # Set stick values
-        tx.set_stick(R_STICK_HOR, 50)  # Steering at 50%
-        tx.set_stick(R_STICK_VER, 75)  # Throttle at 75%
-        
-        # Send to receiver
-        tx.transmit()
-        sleep(0.1ransmitter = RCTransmitter(ble)
-
-# Connect and send RC commands
-transmitter.connect_and_send(b'LEGO Hub', {
-    R_STICK_HOR: 50, MidiController
-from time import sleep
-
-# Create MIDI controller
-midi = MidiController()
-
-# Send MIDI note on
-midi.send_note_on(60, 100)  # Middle C, velocity 100
-sleep(0.5)
-
-# Send MIDI note off
-
-ble = BLEHandler()
-midi = MidiController(ble)
-
-# Connect to MIDI device and send note on
-midi.connect_to_hub(b'LEGO Hub')
-midi.send_note_on(60, 100)  # Middle C, velocity 100
-midi.send_note_off(60)
+print("Waiting for RC transmitter to connect...")
+try:
+    while True:
+        if rcv.is_connected():
+            steering = rcv.controller_state(R_STICK_HOR)
+            throttle = rcv.controller_state(R_STICK_VER)
+            print(f"Steering: {steering}, Throttle: {throttle}")
+            sleep_ms(100)
+        else:
+            sleep_ms(500)
+except KeyboardInterrupt:
+    rcv.disconnect()
 ```
 
-## API Reference
+```python
+from btbricks import RCTransmitter, L_STICK_HOR, R_STICK_VER
+from time import sleep
 
-See the [documentation](docs/api.rst) for detailed API reference.
+# Create RC transmitter (central)
+tx = RCTransmitter()
+
+if tx.connect(name="robot"):
+    try:
+        while tx.is_connected():
+            # Set stick values in range [-100, 100]
+            tx.set_stick(L_STICK_HOR, 0)
+            tx.set_stick(R_STICK_VER, 50)
+            tx.transmit()
+            sleep(0.1)
+    except KeyboardInterrupt:
+        tx.disconnect()
+```
+
+### Create a MIDI Controller
+
+```python
+from btbricks import MidiController
+from time import sleep
+
+# Create MIDI controller (advertises as "amh-midi" by default)
+midi = MidiController(name="amh-midi")
+
+print("MIDI controller started, connect from your DAW...")
+
+try:
+    while True:
+        # Send MIDI note on: middle C (note 60), velocity 100
+        midi.note_on(60, 100)
+        sleep(0.5)
+        
+        # Send MIDI note off
+        midi.note_off(60)
+        sleep(0.5)
+        
+        # Or send a chord
+        midi.chord_on("C4", velocity=100, style="M")  # C major chord
+        sleep(1)
+        midi.note_off(60)  # Stop the chord
+        
+except KeyboardInterrupt:
+    print("MIDI controller stopped")
+```
+
+## Documentation and API reference
+
+See the full documentation and API reference at:
+
+https://docs.antonsmindstorms.com/en/latest/Software/btbricks/docs/index.html
 
 ### Core Classes
 
@@ -134,9 +164,6 @@ See the [documentation](docs/api.rst) for detailed API reference.
 - **ESP32** with MicroPython
 - Other MicroPython boards with `ubluetooth` support
 
-## Firmware Notes
-
-SPIKE Prime requires the MINDSTORMS firmware for Bluetooth support. See [Anton's Mindstorms documentation](https://docs.antonsmindstorms.com) for detailed setup instructions.
 
 ## License
 
