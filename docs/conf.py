@@ -16,6 +16,7 @@ autosummary_generate = True
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "alabaster"
+html_logo = "../img/btbricks.png"
 
 # Autodoc settings
 autodoc_member_order = "bysource"

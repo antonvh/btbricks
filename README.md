@@ -1,6 +1,25 @@
 # btbricks
 
-A MicroPython Bluetooth library for controlling LEGO hubs and creating custom Bluetooth peripherals (RC controllers, MIDI devices, etc.) compatible with LEGO hubs. Implements the official LEGO Bluetooth protocol with support for Nordic UART, MIDI, and BLE Remote communication.
+![btbricks logo](img/btbricks.png)
+
+[![PyPI Version](https://img.shields.io/pypi/v/btbricks.svg)](https://pypi.org/project/btbricks/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![MicroPython](https://img.shields.io/badge/MicroPython-compatible-orange.svg)](https://micropython.org/)
+
+A MicroPython Bluetooth library. It implements BLE (Bluetooth 5, Bluetooth Low Energy). Of the know BLE services, this library implements Nordic Uart Service (NUS), LEGO Service and MIDI service. The library contains both the BLE Central (client) and BLE Peripheral (server) classes.
+
+These BLE services allow for controlling LEGO hubs, running official firmware. The services also allow creating custom Bluetooth peripherals: RC controllers, MIDI devices, etc. To control the LEGO hubs, you can best use a [hub expansion board, like the LMS-ESP32](https://www.antonsmindstorms.com/product/wifi-python-esp32-board-for-mindstorms/).
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation-and-api-reference)
+- [Supported Platforms](#supported-platforms)
+- [Firmware Notes](#firmware-notes)
+- [License](#license)
+- [Author](#author)
 
 ## Features
 
@@ -16,7 +35,7 @@ A MicroPython Bluetooth library for controlling LEGO hubs and creating custom Bl
 
 ### On LMS-ESP32
 
-The module should be included in the latest Micropython firmware from <https://wwww.antonsmindstorms.com>. If not, use ViperIDE or Thonny and create a new file called rcservo.py. 
+The module should be included in the latest Micropython firmware from <https://wwww.antonsmindstorms.com>. If not, use ViperIDE or Thonny and create a new file called rcservo.py.
 Copy the contents from the same file in this repository inside.
 
 ### On MicroPython device using `micropip` from PyPI
