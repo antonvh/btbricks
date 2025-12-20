@@ -1,6 +1,6 @@
 # btbricks
 
-![btbricks logo](https://raw.githubusercontent.com/antonvh/btbricks/master/img/btbricks.png)
+![btbricks logo](https://raw.githubusercontent.com/antonvh/btbricks/master/img/btbricks.png){width=200 height=200}
 
 [![PyPI Version](https://img.shields.io/pypi/v/btbricks.svg)](https://pypi.org/project/btbricks/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
