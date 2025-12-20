@@ -1,12 +1,15 @@
-# btbricks
-
+<div align="center">
 <img alt="btbricks logo" src="https://raw.githubusercontent.com/antonvh/btbricks/master/img/btbricks.png" width="200">
+
+# btbricks
 
 [![PyPI Version](https://img.shields.io/pypi/v/btbricks.svg)](https://pypi.org/project/btbricks/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MicroPython](https://img.shields.io/badge/MicroPython-compatible-orange.svg)](https://micropython.org/)
 
-A MicroPython Bluetooth library. It implements BLE (Bluetooth 5, Bluetooth Low Energy). Of the know BLE services, this library implements Nordic Uart Service (NUS), LEGO Service and MIDI service. The library contains both the BLE Central (client) and BLE Peripheral (server) classes.
+A MicroPython Bluetooth library. It implements **BLE** (Bluetooth 5, Bluetooth Low Energy). Of the know BLE services, this library implements **Nordic Uart Service** (NUS), **LEGO Service** and **MIDI service**. The library contains both the BLE Central (client) and BLE Peripheral (server) classes.
+
+</div>
 
 These BLE services allow for controlling LEGO hubs, running official firmware. The services also allow creating custom Bluetooth peripherals: RC controllers, MIDI devices, etc. To control the LEGO hubs, you can best use a [hub expansion board, like the LMS-ESP32](https://www.antonsmindstorms.com/product/wifi-python-esp32-board-for-mindstorms/).
 

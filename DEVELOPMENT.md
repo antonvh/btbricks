@@ -4,6 +4,10 @@
 
 btbricks is a MicroPython Bluetooth library for controlling LEGO hubs and creating custom BLE peripherals. Development involves both regular Python (for documentation, testing stubs, and package distribution) and MicroPython (for actual deployment).
 
+## Key next steps
+
+Right now the BLEHandler has code in the IRQ handler for setting up and receiving new connection. Depending on the state, e.g. connecting_uart=True, it executes one or the other. One day this should be refactored such that the connect_uart() method sets the correct callbacks in the IRQ and IRQ only handles callbacks. It's big change with lots of testing involved.
+
 ## Setting Up Development Environment
 
 ### Prerequisites
