@@ -2,13 +2,20 @@
 
 ## Overview
 
-btbricks is a MicroPython Bluetooth library for controlling LEGO hubs and creating custom BLE peripherals. Development involves both regular Python (for documentation, testing stubs, and package distribution) and MicroPython (for actual deployment).
+btbricks is a MicroPython Bluetooth library for controlling LEGO hubs and
+creating custom BLE peripherals. Development involves both regular Python (for
+documentation, testing stubs, and package distribution) and MicroPython (for
+actual deployment).
 
-## Key next steps. Please fork and help us out!
+## Key next steps. Please fork and help us out
 
-1. Right now the BLEHandler has code in the IRQ handler for setting up and receiving new connection. Depending on the state, e.g. connecting_uart=True, it executes one or the other. This should be refactored such that the connect_uart() method sets the correct callbacks in the IRQ and IRQ only handles callbacks. It's big change with lots of testing involved.
-2. Everything is a monolithic file. For memory purposes it is probably better to split it, according to the
-   mciropython-lib guidelines.
+1. Right now the BLEHandler has code in the IRQ handler for setting up and
+   receiving new connection. Depending on the state, e.g. connecting_uart=True,
+   it executes one or the other. This should be refactored such that the
+   connect_uart() method sets the correct callbacks in the IRQ and IRQ only
+   handles callbacks. It's big change with lots of testing involved.
+2. Everything is a monolithic file. For memory purposes it is probably better
+   to split it, according to the mciropython-lib guidelines.
 
 ## Setting Up Development Environment
 
@@ -92,7 +99,8 @@ mypy btbricks
 
 ### Notes on Testing
 
-Since btbricks is MicroPython-only, traditional unit tests are limited. Full testing requires:
+Since btbricks is MicroPython-only, traditional unit tests are limited. Full
+testing requires:
 
 - Running code directly on MicroPython device
 - Testing with actual LEGO hubs or mock BLE devices
@@ -189,7 +197,8 @@ pyproject.toml            # Modern Python project config
 ## Useful Resources
 
 - [MicroPython Documentation](https://docs.micropython.org/)
-- [Anton's Mindstorms Docs](https://docs.antonsmindstorms.com/) - LEGO Bluetooth protocol details
+- [Anton's Mindstorms Docs](https://docs.antonsmindstorms.com/) - LEGO
+  Bluetooth protocol details
 - [LEGO Bluetooth Specifications](https://lego.github.io/lego-ble-wireless-protocol-docs/)
 
 ## Contributing
