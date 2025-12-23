@@ -1,0 +1,23 @@
+{
+  "name": "btbricks",
+  "version": "0.2.2",
+  "description": "A MicroPython Bluetooth library for remote controlling LEGO hubs via BLE",
+  "author": "Anton Vanhoucke <anton@antonsmindstorms.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/antonvh/btbricks",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antonvh/btbricks.git"
+  },
+  "keywords": [
+    "micropython",
+    "bluetooth",
+    "ble",
+    "lego",
+    "hub",
+    "control"
+  ],
+  "files": [
+    "btbricks/"
+  ]
+}

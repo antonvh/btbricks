@@ -7,11 +7,15 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MicroPython](https://img.shields.io/badge/MicroPython-compatible-orange.svg)](https://micropython.org/)
 
-A MicroPython Bluetooth library. It implements **BLE** (Bluetooth 5, Bluetooth Low Energy). Of the know BLE services, this library implements **Nordic Uart Service** (NUS), **LEGO Service** and **MIDI service**. The library contains both the BLE Central (client) and BLE Peripheral (server) classes.
+btbricks is MicroPython Bluetooth library. It implements **BLE** (Bluetooth 5, Bluetooth Low Energy). Of the know BLE services, this library implements **Nordic Uart Service** (NUS), **LEGO Service** and **MIDI service**. The library contains both the BLE Central (client) and BLE Peripheral (server) classes.
 
 </div>
 
-These BLE services allow for controlling LEGO hubs, running official firmware. The services also allow creating custom Bluetooth peripherals: RC controllers, MIDI devices, etc. To control the LEGO hubs, you can best use a [hub expansion board, like the LMS-ESP32](https://www.antonsmindstorms.com/product/wifi-python-esp32-board-for-mindstorms/).
+The BLE services allow controlling LEGO hubs running official firmware. You can
+also create custom Bluetooth peripherals: RC controllers, MIDI devices, and more.
+For LEGO hub control, a
+[hub expansion board like the LMS-ESP32](https://www.antonsmindstorms.com/product/wifi-python-esp32-board-for-mindstorms/)
+is recommended.
 
 ## Table of Contents
 
@@ -20,28 +24,45 @@ These BLE services allow for controlling LEGO hubs, running official firmware. T
 - [Quick Start](#quick-start)
 - [Documentation](#documentation-and-api-reference)
 - [Supported Platforms](#supported-platforms)
-- [Firmware Notes](#firmware-notes)
 - [License](#license)
 - [Author](#author)
 
 ## Features
 
-- 🔌 **BLE Communication**: Comprehensive Bluetooth Low Energy support via MicroPython's `ubluetooth`
-- 🎮 **Hub Control**: Control LEGO MINDSTORMS hubs, SPIKE sets, and smart hubs over Bluetooth
-- 📱 **Custom Peripherals**: Create RC controllers, MIDI controllers, and other BLE peripherals compatible with LEGO hubs
-- 🚀 **MicroPython Ready**: Optimized for MicroPython on ESP32, LEGO SPIKE, and other platforms
-- 📡 **LEGO Protocol**: Full support for LEGO Bluetooth protocols (LPF2, LPUP, CTRL+)
-- 🎛️ **Multiple Interfaces**: Nordic UART, MIDI, RC control, and native LEGO hub communication
-- ⚙️ **Advanced BLE**: Automatic MTU negotiation, descriptor handling, and efficient payload management
+- 🔌 **BLE Communication**: Comprehensive Bluetooth Low Energy support via
+  MicroPython's `ubluetooth`
+- 🎮 **Hub Control**: Control LEGO MINDSTORMS hubs, SPIKE sets, and smart hubs
+  over Bluetooth
+- 📱 **Custom Peripherals**: Create RC controllers, MIDI controllers, and other
+  BLE peripherals compatible with LEGO hubs
+- 🚀 **MicroPython Ready**: Optimized for MicroPython on ESP32, LEGO SPIKE, and
+  other platforms
+- 📡 **LEGO Protocol**: Full support for LEGO Bluetooth protocols (LPF2, LPUP,
+  CTRL+)
+- 🎛️ **Multiple Interfaces**: Nordic UART, MIDI, RC control, and native LEGO hub
+  communication
+- ⚙️ **Advanced BLE**: Automatic MTU negotiation, descriptor handling, and
+  efficient payload management
 
 ## Installation
 
+### Using ViperIDE Package Manager (Recommended)
+
+1. Open **ViperIDE** on your device
+2. Go to **Tools** → **Package Manager**
+3. Select **Install Package via Link**
+4. Enter the package link: `https://github.com/antonvh/btbricks`
+5. Follow the on-screen prompts to complete installation
+
 ### On LMS-ESP32
 
-The module should be included in the latest Micropython firmware from <https://wwww.antonsmindstorms.com>. If not, use ViperIDE or Thonny and create a new file called rcservo.py.
-Copy the contents from the same file in this repository inside.
+The module should be included in the latest Micropython firmware from <https://www.antonsmindstorms.com>. If not, use ViperIDE as described above.
 
-### On MicroPython device using `micropip` from PyPI
+### On SPIKE Legacy or MINDSTORMS Robot Inventor
+
+Use the installer script in mpy-robot-tools: <https://github.com/antonvh/mpy-robot-tools/blob/master/Installer/install_mpy_robot_tools.py>
+
+### Deprecated: using `micropip` from PyPI
 
 ```python
 import micropip
@@ -49,10 +70,6 @@ await micropip.install("btbricks")
 ```
 
 Note: `micropip` must be available on the target board and may require an internet connection from the device.
-
-### On SPIKE Legacy or MINDSTORMS Robot Inventor
-
-Use the installer script in mpy-robot-tools: <https://github.com/antonvh/mpy-robot-tools/blob/master/Installer/install_mpy_robot_tools.py>
 
 ## Quick Start
 
@@ -83,7 +100,9 @@ if hub.is_connected():
 ```
 
 ### Create an RC Receiver (Hub-side)
-Use the examples in the `examples/` folder for full, runnable code. Minimal receiver/transmitter snippets:
+
+Use the examples in the `examples/` folder for full, runnable code. Minimal
+receiver/transmitter snippets:
 
 ```python
 from btbricks import RCReceiver, R_STICK_HOR, R_STICK_VER
@@ -159,7 +178,7 @@ except KeyboardInterrupt:
 
 See the full documentation and API reference at:
 
-https://docs.antonsmindstorms.com/en/latest/Software/btbricks/docs/index.html
+[docs.antonsmindstorms.com](https://docs.antonsmindstorms.com/en/latest/Software/btbricks/docs/index.html)
 
 ### Core Classes
 
@@ -185,7 +204,6 @@ https://docs.antonsmindstorms.com/en/latest/Software/btbricks/docs/index.html
 - **LEGO SPIKE Robot Inventor**
 - **ESP32** with MicroPython
 - Other MicroPython boards with `ubluetooth` support
-
 
 ## License
 
