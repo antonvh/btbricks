@@ -17,7 +17,10 @@
     "hub",
     "control"
   ],
-  "package": [
-    "btbricks"
+  "urls": [
+    ["btbricks/__init__.py", "btbricks/__init__.py"],
+    ["btbricks/bthub.py", "btbricks/bthub.py"],
+    ["btbricks/bt.py", "btbricks/bt.py"],
+    ["btbricks/ctrl_plus.py", "btbricks/ctrl_plus.py"]
   ]
 }
