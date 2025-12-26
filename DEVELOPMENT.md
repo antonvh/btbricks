@@ -31,7 +31,7 @@ actual deployment).
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/yourusername/btbricks.git
+    git clone https://github.com/antonvh/btbricks.git
     cd btbricks
     ```
 
@@ -212,6 +212,6 @@ pyproject.toml            # Modern Python project config
 
 ## Issues and Support
 
-- Report bugs on [GitHub Issues](https://github.com/yourusername/btbricks/issues)
+- Report bugs on [GitHub Issues](https://github.com/antonvh/btbricks/issues)
 - Check [Documentation](docs/) for usage help
 - Review [Examples](examples/) for code samples

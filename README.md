@@ -51,12 +51,12 @@ is recommended.
 1. Open **ViperIDE** on your device
 2. Go to **Tools** → **Package Manager**
 3. Select **Install Package via Link**
-4. Enter the package link: `https://github.com/antonvh/btbricks`
+4. Enter the package link: `https://github.com/antonvh/btbricks.git`
 5. Follow the on-screen prompts to complete installation
 
 ### On LMS-ESP32
 
-The module should be included in the latest Micropython firmware from <https://www.antonsmindstorms.com>. If not, use ViperIDE as described above.
+The module should be included in the latest Micropython firmware from <https:/firmware.antonsmindstorms.com>. If not, use ViperIDE as described above.
 
 ### On SPIKE Legacy or MINDSTORMS Robot Inventor
 
