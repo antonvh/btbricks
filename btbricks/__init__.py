@@ -28,8 +28,22 @@ from .bt import (
     SETTING1,
     SETTING2,
 )
-from .bthub import BtHub
-from .ctrl_plus import SmartHub
+from .bthub import (
+    BtHub,
+    OFF,
+    PINK,
+    PURPLE,
+    DARK_BLUE,
+    BLUE,
+    TEAL,
+    GREEN,
+    YELLOW,
+    ORANGE,
+    RED,
+    WHITE,
+)
+
+from .bthub import BtHub as SmartHub
 
 __all__ = [
     "BLEHandler",
