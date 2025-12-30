@@ -1102,16 +1102,16 @@ class RCReceiver(UARTPeripheral):
 
         """
         try:
-            controller_state = struct.unpack("bbbbBBhhB", self.read_buffer)
+            state = struct.unpack("bbbbBBhhB", self.read_buffer)
         except:
-            controller_state = [0] * 9
+            state = [0] * 9
         if indices:
             if len(indices) == 1:
-                return controller_state[indices[0]]
+                return state[indices[0]]
             else:
-                return [controller_state[i] for i in indices]
+                return [state[i] for i in indices]
         else:
-            return controller_state
+            return state
 
 
 class RCTransmitter(UARTCentral):
