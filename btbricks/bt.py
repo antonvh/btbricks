@@ -531,10 +531,9 @@ class BLEHandler:
 
     def advertise(self, payload, interval_us=100000):
         """
-        Advertise a BLE payload for a given time interval.
+        Advertise a BLE payload for a microsecond time interval.
         Create the payload with the _advertising_payload() function.
         """
-        print("Started advertising")
         self._ble.gap_advertise(interval_us, adv_data=payload)
 
     def on_write(self, value_handle, callback):
@@ -929,14 +928,30 @@ class UARTPeripheral(BleUARTBase):
 
         # Flush
         _ = self.ble_handler._ble.gatts_read(self._handle_rx)
-        self.ble_handler.advertise(advertising_payload(name=self.name, services=[_UART_UUID]))
+        
+        # Advertise
+        self._advertising = False
+        self.start_advertising()
+        
+    def start_advertising(self):
+        if not self._advertising:
+            self.ble_handler.advertise(advertising_payload(name=self.name, services=[_UART_UUID]))
+            print("Advertising as:", self.name)
+            self._advertising=True
 
     def is_connected(self):
-        return self.ble_handler._connected_central >= 0
+        if self.ble_handler._connected_central >= 0:
+            if self._advertising:
+                self._advertising=False
+            return True
+        else:
+            self.start_advertising()
+            return False
 
     def _on_disconnect(self, conn_handle):
         # Flush buffer
         self.read()
+        self.start_advertising()
 
     def write(self, data):
         """
