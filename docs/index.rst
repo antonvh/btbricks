@@ -1,5 +1,6 @@
+======================
 btbricks documentation
-========================
+======================
 
 .. image:: ../img/btbricks.png
    :alt: btbricks logo
