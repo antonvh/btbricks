@@ -56,7 +56,7 @@ is recommended.
 
 ### On LMS-ESP32
 
-The module should be included in the latest Micropython firmware from <https:/firmware.antonsmindstorms.com>. If not, use ViperIDE as described above.
+The module should be included in the latest Micropython firmware from <https://firmware.antonsmindstorms.com>. If not, use ViperIDE as described above.
 
 ### On SPIKE Legacy or MINDSTORMS Robot Inventor
 
